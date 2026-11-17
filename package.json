@@ -1,7 +1,7 @@
 {
-  "name": "Bus_Reservation",
+  "name": "bus_reservation",
   "version": "0.0.1",
-  "description": "",
+  "description": "<p align=\"center\">   <a href=\"http://nestjs.com/\" target=\"blank\"><img src=\"https://nestjs.com/img/logo-small.svg\" width=\"120\" alt=\"Nest Logo\" /></a> </p>",
   "author": "",
   "private": true,
   "license": "UNLICENSED",
@@ -51,5 +51,18 @@
     "typescript": "^6.0.2",
     "vite": "^8.0.0",
     "vitest": "^4.1.2"
-  }
+  },
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saraalhorani24/Bus_Reservation.git"
+  },
+  "keywords": [],
+  "bugs": {
+    "url": "https://github.com/saraalhorani24/Bus_Reservation/issues"
+  },
+  "homepage": "https://github.com/saraalhorani24/Bus_Reservation#readme"
 }

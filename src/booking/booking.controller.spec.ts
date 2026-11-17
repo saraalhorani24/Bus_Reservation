@@ -5,10 +5,25 @@ import { BookingService } from './booking.service.js';
 describe('BookingController', () => {
   let controller: BookingController;
 
+  const mockBookingService = {
+    createBooking: vi.fn(),
+    getAllBookings: vi.fn(),
+    getCustomerBookings: vi.fn(),
+    getBookingById: vi.fn(),
+    updateBooking: vi.fn(),
+    cancelBooking: vi.fn(),
+    confirmBooking: vi.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [BookingController],
-      providers: [BookingService],
+      providers: [
+        {
+          provide: BookingService,
+          useValue: mockBookingService,
+        },
+      ],
     }).compile();
 
     controller = module.get<BookingController>(BookingController);

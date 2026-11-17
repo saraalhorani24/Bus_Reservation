@@ -6,75 +6,97 @@ import {
   Patch,
   Param,
   Req,
+  UnauthorizedException,
   UseGuards,
-  Headers,
 } from '@nestjs/common';
+
 import { BookingService } from './booking.service.js';
 import { CreateBookingDto } from './dto/create-booking.dto.js';
 import { UpdateBookingDto } from './dto/update-booking.dto.js';
 
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../auth/guards/roles.guard.js';
+import { Roles } from '../auth/roles.decorator.js';
+
 @Controller('booking')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class BookingController {
   constructor(private readonly bookingService: BookingService) {}
 
+  private getCurrentUser(req: any) {
+    const user = req.user;
+
+    if (!user) {
+      throw new UnauthorizedException('You must be logged in');
+    }
+
+    return {
+      id: user.id || user._id,
+      role: user.role,
+    };
+  }
+
   @Post()
-  create(@Body() createBookingDto: CreateBookingDto, @Body('customerId') customerId?: string, @Req() req?: any) {
-    const custId = customerId || req?.user?._id || req?.user?.id;
+  @Roles('customer')
+  create(@Body() createBookingDto: CreateBookingDto, @Req() req: any) {
+    const user = this.getCurrentUser(req);
+
     return this.bookingService.createBooking(
-      custId,
+      user.id,
       createBookingDto.tripId,
       createBookingDto.seatNumbers,
     );
   }
 
   @Get()
+  @Roles('admin', 'secretary')
   findAll() {
     return this.bookingService.getAllBookings();
   }
 
   @Get('my-bookings')
-  getMyBookings(@Req() req: any, @Body('customerId') customerId?: string) {
-    const custId = customerId || req?.user?._id || req?.user?.id;
-    return this.bookingService.getCustomerBookings(custId);
+  @Roles('customer')
+  getMyBookings(@Req() req: any) {
+    const user = this.getCurrentUser(req);
+
+    return this.bookingService.getCustomerBookings(user.id);
   }
 
   @Get(':id')
+  @Roles('admin', 'secretary')
   findOne(@Param('id') id: string) {
     return this.bookingService.getBookingById(id);
   }
 
   @Patch(':id')
+  @Roles('customer')
   update(
     @Param('id') id: string,
     @Body() updateBookingDto: UpdateBookingDto,
-    @Body('customerId') customerId?: string,
-    @Req() req?: any,
+    @Req() req: any,
   ) {
-    const custId = customerId || req?.user?._id || req?.user?.id;
-    return this.bookingService.updateBooking(id, custId, updateBookingDto.seatNumbers);
+    const user = this.getCurrentUser(req);
+
+    return this.bookingService.updateBooking(
+      id,
+      user.id,
+      updateBookingDto.seatNumbers,
+    );
   }
 
   @Patch(':id/cancel')
-  cancel(
-    @Param('id') id: string,
-    @Body('userId') userId?: string,
-    @Body('userRole') userRole?: string,
-    @Req() req?: any,
-  ) {
-    const uid = userId || req?.user?._id || req?.user?.id;
-    const role = userRole || req?.user?.role || 'customer';
-    return this.bookingService.cancelBooking(id, uid, role);
+  @Roles('customer', 'secretary')
+  cancel(@Param('id') id: string, @Req() req: any) {
+    const user = this.getCurrentUser(req);
+
+    return this.bookingService.cancelBooking(id, user.id, user.role);
   }
 
   @Patch(':id/confirm')
-  confirm(
-    @Param('id') id: string,
-    @Body('userId') userId?: string,
-    @Body('userRole') userRole?: string,
-    @Req() req?: any,
-  ) {
-    const uid = userId || req?.user?._id || req?.user?.id;
-    const role = userRole || req?.user?.role || 'customer';
-    return this.bookingService.confirmBooking(id, uid, role);
+  @Roles('secretary')
+  confirm(@Param('id') id: string, @Req() req: any) {
+    const user = this.getCurrentUser(req);
+
+    return this.bookingService.confirmBooking(id, user.id, user.role);
   }
 }

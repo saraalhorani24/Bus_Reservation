@@ -8,9 +8,10 @@ import { BookingModule } from './booking/booking.module.js';
 import { TripModule } from './trip/trip.module.js';
 import { TripScheduleChangeModule } from './trip-schedule-change/trip-schedule-change.module.js';
 import { BusModule } from './bus/bus.module.js';
+import { NotificationModule } from './notification/notification.module.js';
 
 @Module({
-  imports: [UserModule, MongooseModule.forRoot('mongodb://localhost/nest'), AuthModule, BookingModule, TripModule, TripScheduleChangeModule, BusModule],
+  imports: [UserModule, MongooseModule.forRoot('mongodb://localhost/nest'), AuthModule, BookingModule, TripModule, TripScheduleChangeModule, BusModule, NotificationModule],
   controllers: [AppController],
   providers: [AppService],
 })

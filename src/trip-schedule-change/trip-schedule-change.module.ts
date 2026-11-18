@@ -2,11 +2,18 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { TripScheduleChangeService } from './trip-schedule-change.service.js';
 import { TripScheduleChangeController } from './trip-schedule-change.controller.js';
-import { TripScheduleChange, TripScheduleChangeSchema } from './trip-schedule-change.schema.js';
+import {
+  TripScheduleChange,
+  TripScheduleChangeSchema,
+} from './trip-schedule-change.schema.js';
+import { AuthModule } from '../auth/auth.module.js';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: TripScheduleChange.name, schema: TripScheduleChangeSchema }]),
+    AuthModule,
+    MongooseModule.forFeature([
+      { name: TripScheduleChange.name, schema: TripScheduleChangeSchema },
+    ]),
   ],
   controllers: [TripScheduleChangeController],
   providers: [TripScheduleChangeService],

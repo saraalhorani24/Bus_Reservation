@@ -3,9 +3,13 @@ import { Controller, Get, Patch, Param, Req, UseGuards } from '@nestjs/common';
 import { NotificationService } from './notification.service.js';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../auth/guards/roles.guard.js';
+import { Roles } from '../auth/roles.decorator.js';
+import { ALL_USER_ROLES } from '../auth/roles.js';
 
 @Controller('notification')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(...ALL_USER_ROLES)
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 

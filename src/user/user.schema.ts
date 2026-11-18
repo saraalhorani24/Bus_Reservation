@@ -1,6 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
+import { UserRole } from '../auth/roles.js';
+
 export type UserDocument = HydratedDocument<User>;
 
 @Schema({ timestamps: true })
@@ -19,11 +21,11 @@ export class User {
 
   @Prop({
     type: String,
-    enum: ['admin', 'secretary', 'customer'],
-    default: 'customer',
+    enum: [UserRole.ADMIN, UserRole.SECRETARY, UserRole.CUSTOMER],
+    default: UserRole.CUSTOMER,
     required: true,
   })
-  role: string;
+  role: UserRole;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

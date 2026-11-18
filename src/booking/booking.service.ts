@@ -15,6 +15,7 @@ import { UpdateBookingDto } from './dto/update-booking.dto.js';
 import { Booking, BookingDocument } from './booking.schema.js';
 import { Trip, TripDocument } from '../trip/trip.schema.js';
 import { BusModel, BusModelDocument } from '../bus/bus.schema.js';
+import { UserRole } from '../auth/roles.js';
 
 @Injectable()
 export class BookingService {
@@ -337,7 +338,11 @@ export class BookingService {
     this.validateObjectId(bookingId, 'booking ID');
     this.validateObjectId(userId, 'user ID');
 
-    if (!['customer', 'secretary'].includes(userRole)) {
+    if (
+      ![UserRole.CUSTOMER, UserRole.SECRETARY, UserRole.ADMIN].includes(
+        userRole as UserRole,
+      )
+    ) {
       throw new ForbiddenException('You are not allowed to cancel bookings');
     }
 
@@ -347,7 +352,11 @@ export class BookingService {
       throw new NotFoundException('Booking not found');
     }
 
-    if (userRole === 'customer') {
+    if (booking.status === 'cancelled') {
+      throw new BadRequestException('Booking is already cancelled');
+    }
+
+    if (userRole === UserRole.CUSTOMER) {
       if (booking.customerId.toString() !== userId.toString()) {
         throw new ForbiddenException('You cannot cancel this booking');
       }
@@ -359,7 +368,7 @@ export class BookingService {
       }
     }
 
-    if (userRole === 'secretary' && booking.status !== 'reserved') {
+    if (userRole === UserRole.SECRETARY && booking.status !== 'reserved') {
       throw new BadRequestException(
         'Secretary can only cancel reserved bookings',
       );
@@ -374,7 +383,7 @@ export class BookingService {
     // Secretary cancellation is allowed only during the last 30 minutes
     // before departure. Reschedule-refusal exception will be added
     // when BookingFollowUp is implemented.
-    if (userRole === 'secretary') {
+    if (userRole === UserRole.SECRETARY) {
       const departureDate = this.getDepartureDate(trip);
       const minutesUntilDeparture =
         (departureDate.getTime() - Date.now()) / (1000 * 60);
@@ -421,22 +430,34 @@ export class BookingService {
     }
   }
 
-  // Confirm a booking - secretary only
+  // Confirm a booking - customer (own booking), secretary, or admin
   async confirmBooking(
     bookingId: string,
-    _userId: string | Types.ObjectId,
+    userId: string | Types.ObjectId,
     userRole: string,
   ) {
     this.validateObjectId(bookingId, 'booking ID');
+    this.validateObjectId(userId, 'user ID');
 
-    if (userRole !== 'secretary') {
-      throw new ForbiddenException('Only secretary can confirm bookings');
+    if (
+      ![UserRole.CUSTOMER, UserRole.SECRETARY, UserRole.ADMIN].includes(
+        userRole as UserRole,
+      )
+    ) {
+      throw new ForbiddenException('You are not allowed to confirm bookings');
     }
 
     const booking = await this.bookingModel.findById(bookingId);
 
     if (!booking) {
       throw new NotFoundException('Booking not found');
+    }
+
+    if (
+      userRole === UserRole.CUSTOMER &&
+      booking.customerId.toString() !== userId.toString()
+    ) {
+      throw new ForbiddenException('You cannot confirm this booking');
     }
 
     if (booking.status === 'confirmed') {

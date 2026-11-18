@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BookingController } from './booking.controller.js';
 import { BookingService } from './booking.service.js';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../auth/guards/roles.guard.js';
 
 describe('BookingController', () => {
   let controller: BookingController;
@@ -24,7 +26,12 @@ describe('BookingController', () => {
           useValue: mockBookingService,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(RolesGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<BookingController>(BookingController);
   });

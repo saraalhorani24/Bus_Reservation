@@ -1,18 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { getConnectionToken } from '@nestjs/mongoose';
+import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
-import { Connection } from 'mongoose';
+import { Connection, Model } from 'mongoose';
+import * as bcrypt from 'bcrypt';
+
+import { User, UserDocument } from '../src/user/user.schema.js';
 
 describe('Bus Reservation Workflow (e2e)', () => {
   let app: INestApplication<App>;
   let connection: Connection;
-  let customerId: string;
-  let busModelId: string;
-  let tripId: string;
-  let bookingId: string;
+  let userModel: Model<UserDocument>;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -22,6 +22,9 @@ describe('Bus Reservation Workflow (e2e)', () => {
     app = moduleFixture.createNestApplication();
     await app.init();
     connection = moduleFixture.get<Connection>(getConnectionToken());
+    userModel = moduleFixture.get<Model<UserDocument>>(
+      getModelToken(User.name),
+    );
   });
 
   beforeEach(async () => {
@@ -50,7 +53,6 @@ describe('Bus Reservation Workflow (e2e)', () => {
 
     expect(res.body).toHaveProperty('user');
     expect(res.body.user).toHaveProperty('id');
-    customerId = res.body.user.id;
   });
 
   it('2. Complete end-to-end booking and cancellation workflow', async () => {
@@ -67,10 +69,44 @@ describe('Bus Reservation Workflow (e2e)', () => {
       .expect(201);
 
     const userId = regRes.body.user.id;
+    const customerToken = regRes.body.token;
+
+    await request(app.getHttpServer()).get('/trip/available').expect(401);
+
+    await request(app.getHttpServer())
+      .post('/trip')
+      .set('Authorization', `Bearer ${customerToken}`)
+      .send({})
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .post('/bus')
+      .set('Authorization', `Bearer ${customerToken}`)
+      .send({})
+      .expect(403);
+
+    const adminUsername = `admin${Date.now()}`;
+    const adminPassword = 'password123';
+
+    await userModel.create({
+      name: 'Test Admin',
+      username: adminUsername,
+      phone: `199${Math.floor(Math.random() * 10000000)}`,
+      password: await bcrypt.hash(adminPassword, 10),
+      role: 'admin',
+    });
+
+    const adminLoginRes = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ username: adminUsername, password: adminPassword })
+      .expect(201);
+
+    const adminToken = adminLoginRes.body.token;
 
     // 2. Create Bus Model
     const busRes = await request(app.getHttpServer())
       .post('/bus')
+      .set('Authorization', `Bearer ${adminToken}`)
       .send({
         category: 'economy_class',
         size: 'large',
@@ -84,6 +120,7 @@ describe('Bus Reservation Workflow (e2e)', () => {
     // 3. Create Trip
     const tripRes = await request(app.getHttpServer())
       .post('/trip')
+      .set('Authorization', `Bearer ${adminToken}`)
       .send({
         busModelId: bModelId,
         source: 'City A',
@@ -101,6 +138,7 @@ describe('Bus Reservation Workflow (e2e)', () => {
     // 4. Verify Available Trips
     const availRes = await request(app.getHttpServer())
       .get('/trip/available')
+      .set('Authorization', `Bearer ${customerToken}`)
       .expect(200);
 
     const foundTrip = availRes.body.find((t: any) => t._id === tId);
@@ -110,6 +148,7 @@ describe('Bus Reservation Workflow (e2e)', () => {
     // 5. Create Booking (Seats 1 and 2)
     const bookingRes = await request(app.getHttpServer())
       .post('/booking')
+      .set('Authorization', `Bearer ${customerToken}`)
       .send({
         tripId: tId,
         customerId: userId,
@@ -123,24 +162,29 @@ describe('Bus Reservation Workflow (e2e)', () => {
     // 6. Prevent Double Booking for Seat 2
     await request(app.getHttpServer())
       .post('/booking')
+      .set('Authorization', `Bearer ${customerToken}`)
       .send({
         tripId: tId,
         customerId: userId,
         seatNumbers: [2, 3],
       })
-      .expect(400);
+      .expect(409);
 
     // 7. Verify Trip Seat Count after booking
     const tripCheck1 = await request(app.getHttpServer())
       .get(`/trip/${tId}`)
+      .set('Authorization', `Bearer ${customerToken}`)
       .expect(200);
 
     expect(tripCheck1.body.bookedSeatsCount).toBe(2);
-    expect(tripCheck1.body.availableSeats).toBe(48);
+    expect(
+      tripCheck1.body.busModelId.capacity - tripCheck1.body.bookedSeatsCount,
+    ).toBe(48);
 
     // 8. Cancel Booking
     await request(app.getHttpServer())
       .patch(`/booking/${bId}/cancel`)
+      .set('Authorization', `Bearer ${customerToken}`)
       .send({
         userId,
         userRole: 'customer',
@@ -150,9 +194,12 @@ describe('Bus Reservation Workflow (e2e)', () => {
     // 9. Verify Trip Seats Released
     const tripCheck2 = await request(app.getHttpServer())
       .get(`/trip/${tId}`)
+      .set('Authorization', `Bearer ${customerToken}`)
       .expect(200);
 
     expect(tripCheck2.body.bookedSeatsCount).toBe(0);
-    expect(tripCheck2.body.availableSeats).toBe(50);
+    expect(
+      tripCheck2.body.busModelId.capacity - tripCheck2.body.bookedSeatsCount,
+    ).toBe(50);
   });
 });

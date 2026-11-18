@@ -6,9 +6,11 @@ import { Trip, TripSchema } from './trip.schema.js';
 import { BusModule } from '../bus/bus.module.js';
 import { BookingModule } from '../booking/booking.module.js';
 import { TripScheduleChangeModule } from '../trip-schedule-change/trip-schedule-change.module.js';
+import { AuthModule } from '../auth/auth.module.js';
 
 @Module({
   imports: [
+    AuthModule,
     MongooseModule.forFeature([{ name: Trip.name, schema: TripSchema }]),
     BusModule,
     BookingModule,

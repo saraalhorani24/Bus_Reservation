@@ -3,6 +3,8 @@ import { getModelToken } from '@nestjs/mongoose';
 import { BusController } from './bus.controller.js';
 import { BusService } from './bus.service.js';
 import { BusModel } from './bus.schema.js';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../auth/guards/roles.guard.js';
 
 describe('BusController', () => {
   let controller: BusController;
@@ -24,7 +26,12 @@ describe('BusController', () => {
           useValue: mockBusModel,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(RolesGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<BusController>(BusController);
   });

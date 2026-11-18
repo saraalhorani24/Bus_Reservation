@@ -17,6 +17,7 @@ import { UpdateBookingDto } from './dto/update-booking.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
+import { UserRole } from '../auth/roles.js';
 
 @Controller('booking')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -37,7 +38,7 @@ export class BookingController {
   }
 
   @Post()
-  @Roles('customer')
+  @Roles(UserRole.CUSTOMER)
   create(@Body() createBookingDto: CreateBookingDto, @Req() req: any) {
     const user = this.getCurrentUser(req);
 
@@ -49,13 +50,13 @@ export class BookingController {
   }
 
   @Get()
-  @Roles('admin', 'secretary')
+  @Roles(UserRole.ADMIN, UserRole.SECRETARY)
   findAll() {
     return this.bookingService.getAllBookings();
   }
 
   @Get('my-bookings')
-  @Roles('customer')
+  @Roles(UserRole.CUSTOMER)
   getMyBookings(@Req() req: any) {
     const user = this.getCurrentUser(req);
 
@@ -63,13 +64,13 @@ export class BookingController {
   }
 
   @Get(':id')
-  @Roles('admin', 'secretary')
+  @Roles(UserRole.ADMIN, UserRole.SECRETARY)
   findOne(@Param('id') id: string) {
     return this.bookingService.getBookingById(id);
   }
 
   @Patch(':id')
-  @Roles('customer')
+  @Roles(UserRole.CUSTOMER)
   update(
     @Param('id') id: string,
     @Body() updateBookingDto: UpdateBookingDto,
@@ -85,7 +86,7 @@ export class BookingController {
   }
 
   @Patch(':id/cancel')
-  @Roles('customer', 'secretary')
+  @Roles(UserRole.CUSTOMER, UserRole.SECRETARY, UserRole.ADMIN)
   cancel(@Param('id') id: string, @Req() req: any) {
     const user = this.getCurrentUser(req);
 
@@ -93,7 +94,7 @@ export class BookingController {
   }
 
   @Patch(':id/confirm')
-  @Roles('secretary')
+  @Roles(UserRole.CUSTOMER, UserRole.SECRETARY, UserRole.ADMIN)
   confirm(@Param('id') id: string, @Req() req: any) {
     const user = this.getCurrentUser(req);
 

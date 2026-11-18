@@ -6,7 +6,8 @@ import {
   Optional,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model, Types } from 'mongoose';
+import type { Connection } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { CreateTripDto } from './dto/create-trip.dto.js';
 import { UpdateTripDto } from './dto/update-trip.dto.js';
 import { Trip, TripDocument } from './trip.schema.js';
@@ -143,13 +144,17 @@ export class TripService {
       err.statusCode = 400;
       throw err;
     }
-    const trip = await this.tripModel.findById(id).populate('busModelId');
+    const trip = await this.tripModel.findById(id).populate('busModelId').lean();
     if (!trip) {
       const err: any = new NotFoundException('Trip not found');
       err.statusCode = 404;
       throw err;
     }
-    return trip;
+    const tripBooking = await this.bookingModel.find({
+      tripId: id,
+      status: { $in: ['reserved', 'confirmed'] },
+    }).lean();
+    return { ...trip, tripBooking };
   }
 
   async findOne(id: string) {
